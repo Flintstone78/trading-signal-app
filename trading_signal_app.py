@@ -4,13 +4,14 @@ import numpy as np
 import requests
 import streamlit as st
 
-# Define the stock/index to analyze
-TICKER = "^GSPC"  # S&P 500, change to preferred index
+# Define the indexes to analyze
+TICKERS = ["^GSPC", "^IXIC", "^GDAXI"]  # S&P 500, Nasdaq, DAX
 
 # Fetch historical data
 def get_stock_data(ticker, period="6mo", interval="1d"):
     stock = yf.Ticker(ticker)
     df = stock.history(period=period, interval=interval)
+    df["Ticker"] = ticker  # Add ticker column for identification
     return df
 
 # Identify Kullamägi-style breakout setup
@@ -28,21 +29,51 @@ def identify_breakout(df, min_gain=0.3, max_gain=1.0, consolidation_days=20):
     
     return df[df["Breakout"] == True]
 
+# Send email alert
+def send_email_alert(message):
+    import smtplib
+    from email.mime.text import MIMEText
+    
+    sender_email = artwaves.email@gmail.com
+    receiver_email = fredrik.vindelalv@gmail.com
+    password = Mauritius123?
+    
+    msg = MIMEText(message)
+    msg["Subject"] = "Trading Signal Alert"
+    msg["From"] = sender_email
+    msg["To"] = receiver_email
+    
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email, msg.as_string())
+
 # Streamlit Dashboard
 def run_dashboard():
     st.title("Trading Signal Dashboard")
     st.write("Real-time detection of breakout signals using Kullamägi's strategy")
     
-    data = get_stock_data(TICKER)
-    breakout_signals = identify_breakout(data)
+    breakout_signals = []
     
-    if not breakout_signals.empty:
+    for ticker in TICKERS:
+        data = get_stock_data(ticker)
+        signals = identify_breakout(data)
+        if not signals.empty:
+            breakout_signals.append(signals)
+    
+    if breakout_signals:
+        breakout_df = pd.concat(breakout_signals)
         st.subheader("🚀 Breakout Signals Detected!")
-        st.dataframe(breakout_signals)
+        st.dataframe(breakout_df)
+        
+        message = f"🚀 Breakout Alert! Check {breakout_df['Ticker'].tolist()} for new highs!"
+        send_email_alert(message)
     else:
         st.write("No breakouts detected at the moment.")
     
-    st.line_chart(data["Close"])
+    for ticker in TICKERS:
+        st.subheader(f"Price Chart for {ticker}")
+        data = get_stock_data(ticker)
+        st.line_chart(data["Close"])
 
 # Run the scanner
 def main():
